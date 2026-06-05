@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Registry System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <style>
+        /* Professional Corporate Theme */
+        :root {
+            --primary: #0f4c81; 
+            --primary-hover: #0a365c;
+            --bg-body: #f4f7f9;
+            --bg-card: #ffffff;
+            --text-main: #333333;
+            --text-muted: #666666;
+            --border-color: #e1e4e8;
+            --table-header: #f8f9fa;
+            --success: #28a745;
+        }
+
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+        body { background-color: var(--bg-body); color: var(--text-main); margin: 0; padding: 40px 20px; display: flex; justify-content: center; }
+
+        .container { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 30px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); width: 100%; max-width: 1100px; }
+
+        .header-area { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; margin-bottom: 25px; }
+
+        h1 { margin: 0; color: var(--primary); font-size: 1.5rem; font-weight: 600; }
+
+        .header-actions { display: flex; gap: 10px; align-items: center; }
+
+        .btn-qr { background: var(--text-main); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+
+        #saveIndicator { background: var(--success); color: white; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; opacity: 0; transition: opacity 0.3s ease; }
+
+        .tabs { display: flex; gap: 10px; margin-bottom: 30px; }
+        .tab-btn { padding: 10px 20px; background: var(--bg-body); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; color: var(--text-muted); }
+        .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .page { display: none; }
+        .page.active { display: block; }
+
+        .form-group { display: flex; gap: 15px; align-items: center; background: var(--bg-body); padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid var(--border-color); flex-wrap: wrap; }
+        .input-block { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
+        label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+        select, input[type="text"] { padding: 10px 15px; border: 1px solid var(--border-color); border-radius: 6px; }
+        .btn { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; height: 42px; margin-top: auto; }
+
+        .table-responsive { width: 100%; overflow-x: auto; border: 1px solid var(--border-color); border-radius: 6px; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th, td { padding: 14px 16px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); vertical-align: top; }
+        th { background: var(--table-header); color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; }
+        [contenteditable="true"] { min-height: 40px; background: #fafbfc; border: 1px dashed transparent; outline: none; }
+        [contenteditable="true"]:focus { background: #ffffff; border-color: var(--primary); }
+        .id-cell { font-weight: 600; color: var(--primary); background: var(--table-header); text-align: center; }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; max-width: 500px; width: 90%; text-align: center; }
+        #liveVideo { width: 100%; background: #000; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header-area">
+            <h1>Register System</h1>
+            <div class="header-actions">
+                <div id="saveIndicator">✓ Saved</div>
+                <button class="btn-qr" id="qrGeneratorBtn" onclick="openQrModal()">📱 Generate QR Link</button>
+            </div>
+        </div>
+
+        <div class="tabs" id="navigationTabs">
+            <button class="tab-btn" id="btn-entry" onclick="switchTab('entry')">1. Registration Entry</button>
+            <button class="tab-btn" id="btn-output" onclick="switchTab('output')">2. Master Dashboard</button>
+        </div>
+
+        <div id="page-entry" class="page">
+            <div class="form-group">
+                <div class="input-block">
+                    <label>Select Category</label>
+                    <select id="regCategory" onchange="updateHeaderLabel()">
+                        <option value="Job No">Job No</option>
+                        <option value="Tool">Tool</option>
+                        <option value="General">General</option>
+                        <option value="Machine">Machine</option>
+                        <option value="Improvement">Improvement</option>
+                    </select>
+                </div>
+                <div class="input-block">
+                    <label id="lblId">Enter ID / Number</label>
+                    <input type="text" id="regId" placeholder="e.g., 1898/20 HV">
+                </div>
+                <button class="btn" onclick="createOrLoadRecord()">Load / Create Item</button>
+            </div>
+            <div id="entryWorkspace" style="display: none;">
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th id="colHeaderId" style="width: 18%;">Item No.</th><th style="width: 33%;">Detail</th><th style="width: 22%;">Photo</th><th style="width: 27%;">Remark</th></tr></thead>
+                        <tbody id="entryTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-output" class="page">
+            <div class="form-group">
+                <div class="input-block">
+                    <label>View Registered Item</label>
+                    <select id="outputSelect" onchange="renderOutputTable(this.value)">
+                        <option value="">-- No Items Registered --</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead><tr><th id="outColHeaderId" style="width: 18%;">ID / Number</th><th style="width: 33%;">Detail</th><th style="width: 22%;">Photo</th><th style="width: 27%;">Remark</th></tr></thead>
+                    <tbody id="outputTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="cameraModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Live Camera</h3>
+            <video id="liveVideo" autoplay playsinline></video>
+            <div style="margin-top:15px; display:flex; gap:10px; justify-content:center;">
+                <button class="btn" style="background:#28a745" onclick="takeSnapshot()">Snap</button>
+                <button class="btn" style="background:#dc3545" onclick="closeCameraModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="qrModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Scan QR Code</h3>
+            <div id="qrcode-container" style="display:flex; justify-content:center; margin:20px 0;"></div>
+            <button class="btn" onclick="closeQrModal()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        let database = JSON.parse(localStorage.getItem('registryData')) || { "Job No": {}, "Tool": {}, "General": {}, "Machine": {}, "Improvement": {} };
+        let currentActiveRecord = { category: "", id: "" };
+        let videoStream = null;
+
+        // FIXED DOM LOAD LOGIC
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if(urlParams.get('mode') === 'qr') {
+                const tabs = document.getElementById('navigationTabs');
+                const btn = document.getElementById('qrGeneratorBtn');
+                if(tabs) tabs.style.display = 'none';
+                if(btn) btn.style.display = 'none';
+            }
+            
+            // Explicitly set the first tab as active when the page loads
+            switchTab('entry');
+        });
+
+        function switchTab(tab) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            
+            const pageEl = document.getElementById('page-' + tab);
+            const btnEl = document.getElementById('btn-' + tab);
+            
+            if(pageEl) pageEl.classList.add('active');
+            if(btnEl) btnEl.classList.add('active');
+            
+            if (tab === 'output') updateOutputDropdown();
+        }
+
+        function updateHeaderLabel() {
+            const cat = document.getElementById('regCategory').value;
+            document.getElementById('lblId').innerText = `Enter ${cat} Number`;
+            document.getElementById('colHeaderId').innerText = cat;
+        }
+
+        function createOrLoadRecord() {
+            const category = document.getElementById('regCategory').value;
+            const id = document.getElementById('regId').value.trim();
+            if (!id) return alert("Enter ID");
+            if (!database[category][id]) database[category][id] = { detail: "", photoSrc: "", remark: "" };
+            currentActiveRecord = { category, id };
+            const data = database[category][id];
+            document.getElementById('entryWorkspace').style.display = "block";
+            document.getElementById('entryTableBody').innerHTML = `
+                <tr>
+                    <td class="id-cell">${id}</td>
+                    <td contenteditable="true" id="cellDetail" oninput="autoSave()">${data.detail}</td>
+                    <td>
+                        <button class="btn-qr" onclick="openCameraModal()">📷 Camera</button>
+                        <div id="imgContainer">${data.photoSrc ? `<img src="${data.photoSrc}" style="width:100%; margin-top:10px;">` : ''}</div>
+                    </td>
+                    <td contenteditable="true" id="cellRemark" oninput="autoSave()">${data.remark}</td>
+                </tr>`;
+        }
+
+        function autoSave() {
+            const { category, id } = currentActiveRecord;
+            database[category][id] = { 
+                detail: document.getElementById('cellDetail').innerText, 
+                remark: document.getElementById('cellRemark').innerText,
+                photoSrc: document.querySelector('#imgContainer img')?.src || ""
+            };
+            localStorage.setItem('registryData', JSON.stringify(database));
+            const indicator = document.getElementById('saveIndicator');
+            indicator.style.opacity = '1';
+            setTimeout(() => indicator.style.opacity = '0', 1500);
+        }
+
+        function openQrModal() {
+            const container = document.getElementById('qrcode-container');
+            container.innerHTML = "";
+            new QRCode(container, {
+                text: window.location.origin + window.location.pathname + "?mode=qr",
+                width: 200, height: 200
+            });
+            document.getElementById('qrModal').style.display = 'flex';
+        }
+
+        function closeQrModal() { document.getElementById('qrModal').style.display = 'none'; }
+        
+        function openCameraModal() {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then(stream => { videoStream = stream; document.getElementById('liveVideo').srcObject = stream; document.getElementById('cameraModal').style.display = 'flex'; })
+            .catch(err => { alert("Camera access denied or unavailable."); });
+        }
+
+        function closeCameraModal() {
+            document.getElementById('cameraModal').style.display = 'none';
+            if(videoStream) videoStream.getTracks().forEach(t => t.stop());
+        }
+
+        function takeSnapshot() {
+            const video = document.getElementById('liveVideo');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            document.getElementById('imgContainer').innerHTML = `<img src="${canvas.toDataURL()}" style="width:100%; margin-top:10px;">`;
+            closeCameraModal();
+            autoSave();
+        }
+
+        function updateOutputDropdown() {
+            const select = document.getElementById('outputSelect');
+            select.innerHTML = '<option value="">-- Select Item --</option>';
+            for (let cat in database) {
+                for (let id in database[cat]) {
+                    select.innerHTML += `<option value="${cat}|||${id}">${cat}: ${id}</option>`;
+                }
+            }
+        }
+
+        function renderOutputTable(val) {
+            if (!val) {
+                document.getElementById('outputTableBody').innerHTML = '';
+                return;
+            }
+            const [cat, id] = val.split('|||');
+            const data = database[cat][id];
+            document.getElementById('outputTableBody').innerHTML = `<tr><td class="id-cell">${id}</td><td>${data.detail}</td><td>${data.photoSrc ? `<img src="${data.photoSrc}" style="width:100px;">` : 'No Photo'}</td><td>${data.remark}</td></tr>`;
+        }
+    </script>
+</body>
+</html>
